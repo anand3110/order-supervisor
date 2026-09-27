@@ -14,8 +14,6 @@ The supervisor should be able to:
 - Continue across multiple events
 - Stop when the backend determines that the order has reached a terminal state
 
-The implementation is intentionally kept small because the assignment is a POC.
-
 ---
 
 ## 2. One Run Per Order
@@ -60,9 +58,7 @@ If the backend restarts before 12:30, the scheduler can read the database and co
 
 ---
 
-## 4. Why a Database-Backed Scheduler
-
-For this POC, I chose a simple PostgreSQL-backed scheduler instead of introducing a separate workflow engine.
+## 4. Database-Backed Scheduler
 
 The scheduler periodically checks for:
 
@@ -77,16 +73,6 @@ next_wake_at <= current_time
 ```
 
 When a run is ready, it is moved back to `RUNNING` and the supervisor runtime is executed.
-
-This approach was chosen because:
-
-- PostgreSQL is already required by the application.
-- The scheduling state is already stored in the database.
-- It keeps the infrastructure small.
-- It is easy to understand and demonstrate.
-- It provides basic restart recovery.
-
-For a larger production system with many workflows, I would consider a dedicated workflow engine or distributed queue.
 
 ---
 
@@ -183,29 +169,7 @@ This provides a clear boundary between model output and application behavior.
 
 ---
 
-## 8. Why Actions Are Simulated
-
-The assignment does not require real integrations with payment, fulfillment, logistics, or messaging systems.
-
-Therefore, the action handlers create activity records in PostgreSQL instead.
-
-For example:
-
-```text
-message_logistics_team
-        ↓
-Activity record
-        ↓
-Displayed in UI
-```
-
-This allows the complete workflow to be demonstrated without requiring external services.
-
-In a production system, these handlers could be replaced with calls to actual internal services.
-
----
-
-## 9. Event-Driven + Scheduled Execution
+## 8. Event-Driven + Scheduled Execution
 
 The supervisor can be activated in two main ways.
 
@@ -245,7 +209,7 @@ Using both mechanisms allows the supervisor to react to external events while st
 
 ---
 
-## 10. Handling LLM Failures
+## 9. Handling LLM Failures
 
 The LLM is an external dependency and can temporarily fail.
 
@@ -267,9 +231,7 @@ The system can therefore continue operating even when the model provider tempora
 
 ---
 
-## 11. Current Scope
-
-This project is intentionally implemented as a small POC.
+## 10. Current Scope
 
 The following are simulated:
 
@@ -280,51 +242,4 @@ The following are simulated:
 - Internal notes
 - Order events
 
-The main focus is the supervisor runtime rather than building real integrations.
-
 ---
-
-## 12. Tradeoffs
-
-**Simple scheduler vs workflow engine**
-
-A PostgreSQL-backed scheduler is simpler to implement and sufficient for the POC.
-
-A workflow engine would provide stronger workflow guarantees and more advanced execution semantics, but would add infrastructure and complexity.
-
-**Database state vs in-memory state**
-
-Database state adds persistence overhead but provides restart recovery.
-
-For a long-running workflow, persistence is more important than keeping the implementation minimal.
-
-**Single supervisor vs multiple agents**
-
-The system uses one supervisor per order.
-
-Multiple specialized agents could be introduced later, but they would add coordination complexity without being necessary for the current problem.
-
-**Simulated actions vs real integrations**
-
-Simulated actions make the demo deterministic and self-contained.
-
-Real integrations would make the system closer to production but would require additional services, authentication, error handling, and infrastructure.
-
----
-
-## 13. Production Improvements
-
-If this system were taken beyond the POC, I would consider:
-
-- A dedicated workflow engine or distributed job queue.
-- Strong event idempotency using external event IDs.
-- Stronger concurrency control for simultaneous events.
-- Distributed scheduler workers.
-- Authentication and authorization.
-- Real integrations with internal services.
-- Better observability, metrics, and tracing.
-- Automated integration and end-to-end tests.
-- More advanced context management for very long-running orders.
-- Dead-letter handling for events that repeatedly fail.
-
-These improvements were intentionally kept outside the current scope to keep the take-home implementation small and reliable.
