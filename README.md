@@ -6,19 +6,17 @@ The supervisor reacts to order events, reasons about the current state, performs
 
 ---
 
-## Architecture
-
-# System Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
-    UI["Next.js UI<br/><small>Dashboard, runs, events, controls</small>"]
-    API["FastAPI<br/><small>REST APIs, run lifecycle, events</small>"]
-    DB["PostgreSQL<br/><small>Orders, runs, events, activities</small>"]
-    SCHED["Scheduler<br/><small>Finds sleeping runs to wake</small>"]
+    UI["Next.js UI<br/>Dashboard, runs, events, controls"]
+    API["FastAPI<br/>REST APIs, run lifecycle, events"]
+    DB["PostgreSQL<br/>Orders, runs, events, activities"]
+    SCHED["Scheduler<br/>Finds sleeping runs to wake"]
     SUP["Supervisor Runtime"]
-    LLM["Gemini LLM<br/><small>Reasoning, actions, sleep duration</small>"]
-    ACT["Action Services<br/><small>Fulfillment, payments, logistics, notes</small>"]
+    LLM["Gemini LLM<br/>Reasoning, actions, sleep duration"]
+    ACT["Action Services<br/>Fulfillment, payments, logistics, notes"]
 
     UI --> API
     API --> DB
@@ -38,7 +36,7 @@ flowchart TD
     class ACT action
 ```
 
-## Components
+# Components
 
 - **Next.js UI** — dashboard, run details, event simulator, and run controls.
 - **FastAPI** — REST APIs, run lifecycle management, and event processing.
@@ -48,14 +46,13 @@ flowchart TD
 - **Gemini LLM** — does the reasoning, decides on actions, and sets the next sleep duration.
 - **Action Services** — fulfillment, payments, logistics, customer contact, and internal notes.
 
-## Flow
+# Flow
 
 1. The UI calls FastAPI to create or update orders and runs.
 2. FastAPI persists state to PostgreSQL and hands sleeping runs to the Scheduler.
 3. When a run's wake time arrives, the Scheduler triggers the Supervisor Runtime.
 4. The Supervisor Runtime calls Gemini, which reasons over the order/run context and decides what to do next — including how long to sleep before waking again.
 5. Gemini's chosen actions are dispatched to the relevant Action Service (fulfillment, payments, logistics, customer contact, or an internal note).
----
 
 ## How to Run
 
