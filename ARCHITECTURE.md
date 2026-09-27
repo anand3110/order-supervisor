@@ -14,62 +14,33 @@ The backend is responsible for the run lifecycle and completion. The LLM is only
 
 ## 2. High-Level Architecture
 
-```text
-╔═══════════════════════════════════════════════════════════════╗
-║                          Next.js UI                            ║
-║  Dashboard   Run Details   Event Simulator   Run Controls      ║
-╚════════════════════════════╤════════════════════════════════╝
-                              │  HTTP
-                              ▼
-╔═══════════════════════════════════════════════════════════════╗
-║                           FastAPI                               ║
-║  Supervisor APIs   Order APIs   Run APIs   Event APIs           ║
-╚═══════════════╤═══════════════════════════════╤═══════════════╝
-                 │                               │
-                 ▼                               ▼
-   ┌───────────────────────────┐   ┌───────────────────────────┐
-   │        PostgreSQL          │   │         Scheduler          │
-   │ ─────────────────────────  │   │ ─────────────────────────  │
-   │  Supervisors                │   │  Finds sleeping runs        │
-   │  Orders                     │   │  whose wake time            │
-   │  Runs                       │   │  has arrived                │
-   │  Events                     │   └──────────────┬─────────────┘
-   │  Activities                 │                  │
-   │  Instructions               │                  │
-   └──────────────┬─────────────┘                  │
-                  │                                  │
-                  └────────────────┬─────────────────┘
-                                    ▼
-                    ╔═══════════════════════════╗
-                    ║     Supervisor Runtime      ║
-                    ║ ───────────────────────────║
-                    ║  Load state                  ║
-                    ║  Process events               ║
-                    ║  Call agent                    ║
-                    ║  Execute actions                ║
-                    ║  Update state                    ║
-                    ║  Schedule next wake-up            ║
-                    ╚══════════════╤════════════════╝
-                                    │
-                                    ▼
-                    ╔═══════════════════════════╗
-                    ║        Gemini API           ║
-                    ║ ───────────────────────────║
-                    ║  Reasoning                    ║
-                    ║  Recommended actions            ║
-                    ║  Sleep duration                    ║
-                    ╚══════════════╤════════════════╝
-                                    │
-                                    ▼
-                    ╔═══════════════════════════╗
-                    ║      Action Services         ║
-                    ║ ───────────────────────────║
-                    ║  Fulfillment                  ║
-                    ║  Payments                       ║
-                    ║  Logistics                        ║
-                    ║  Customer                           ║
-                    ║  Internal Notes                       ║
-                    ╚═══════════════════════════╝
+```mermaid
+flowchart TD
+    UI["Next.js UI<br/>Dashboard · Run Details<br/>Event Simulator · Run Controls"]
+    API["FastAPI<br/>Supervisor APIs · Order APIs<br/>Run APIs · Event APIs"]
+    DB["PostgreSQL<br/>Supervisors · Orders · Runs<br/>Events · Activities · Instructions"]
+    SCHED["Scheduler<br/>Finds sleeping runs<br/>whose wake time has arrived"]
+    SUP["Supervisor Runtime<br/>Load state · Process events<br/>Call agent · Execute actions<br/>Update state · Schedule next wake-up"]
+    LLM["Gemini API<br/>Reasoning · Recommended actions<br/>Sleep duration"]
+    ACT["Action Services<br/>Fulfillment · Payments<br/>Logistics · Customer · Internal Notes"]
+
+    UI --> API
+    API --> DB
+    API --> SCHED
+    DB --> SUP
+    SCHED --> SUP
+    SUP --> LLM
+    LLM --> ACT
+
+    classDef ui fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A;
+    classDef backend fill:#E6F1FB,stroke:#185FA5,color:#042C53;
+    classDef ai fill:#EEEDFE,stroke:#534AB7,color:#26215C;
+    classDef action fill:#FAECE7,stroke:#993C1D,color:#4A1B0C;
+
+    class UI ui
+    class API,DB,SCHED backend
+    class SUP,LLM ai
+    class ACT action
 ```
 
 ---
@@ -419,12 +390,6 @@ The flow is:
                        Activity
 ```
 
-For this assignment, the actions do not call real external services.
-
-Instead, each action creates an activity record in PostgreSQL.
-
-This makes the behavior visible in the UI while keeping the POC small.
-
 ---
 
 ## 10. Scheduler
@@ -594,24 +559,7 @@ For this POC, the external actions are represented as database activity records 
 
 ---
 
-## 15. Why PostgreSQL + Scheduler
-
-For this assignment, I chose a PostgreSQL-backed scheduler instead of introducing a separate workflow system such as Temporal or a message broker.
-
-The main reasons were:
-
-- The application already requires PostgreSQL.
-- Supervisor state is naturally persisted there.
-- `next_wake_at` is enough for the scheduling requirement.
-- The implementation is smaller and easier to understand.
-- Restart recovery can be handled from persisted state.
-- It keeps the POC focused on the long-running supervisor rather than infrastructure.
-
-For a larger production system with a high number of long-running workflows, I would consider a dedicated workflow engine or queue-based architecture.
-
----
-
-## 16. Why the LLM Does Not Control Completion
+## 15. LLM Does Not Control Completion
 
 The LLM is probabilistic, while completion is a deterministic business rule.
 
@@ -631,7 +579,7 @@ This separation also makes the system easier to test because terminal states can
 
 ---
 
-## 17. Current Scope
+## 16. Current Scope
 
 This implementation intentionally keeps the scope small.
 
@@ -649,20 +597,12 @@ The event simulator is also part of the POC so that the complete lifecycle can b
 
 ---
 
-## 18. Current Limitations
-
-The current implementation is designed as a take-home POC rather than a production workflow engine.
+## 17. Current Limitations
 
 Some areas that would need additional work for production include:
 
 - Stronger event idempotency guarantees
 - More robust concurrency handling around simultaneous events
-- Distributed scheduling for multiple backend instances
-- Dedicated queue/workflow infrastructure
 - Authentication and authorization
 - Real integrations with fulfillment, payment, logistics and messaging systems
-- More advanced context management for very long-running orders
 - Better observability and metrics
-- More comprehensive automated tests
-
-These were intentionally kept outside the scope of the current implementation so that the core long-running supervisor flow remains small and demonstrable.
